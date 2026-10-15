@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Çokgen Avı - 5. Sınıf Matematik Oyunu</title>
+    <!-- Tailwind CSS for modern responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti for celebratory animations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
+            min-height: 100vh;
+        }
+        .box-perspective {
+            perspective: 1000px;
+        }
+        .box-inner {
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .box-open {
+            transform: rotateY(180deg) scale(0.95);
+        }
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .pulse-glow {
+            box-shadow: 0 0 25px rgba(234, 179, 8, 0.6);
+        }
+    </style>
+</head>
+<body class="text-white flex flex-col min-h-screen items-center justify-between p-4 md:p-6">
+
+    <header class="w-full max-w-5xl flex flex-col md:flex-row justify-between items-center bg-white/10 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-white/20 mb-6 gap-4">
+        <div class="flex items-center space-x-3">
+            <div class="bg-yellow-400 text-purple-900 p-3 rounded-xl text-2xl font-bold shadow-lg">
+                <i class="fa-solid fa-shapes"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold tracking-wide">Çokgen Avı</h1>
+                <p class="text-xs text-indigo-200">5. Sınıf Matematik Macerası</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4 bg-black/30 px-6 py-2 rounded-xl border border-white/10">
+            <div class="text-center">
+                <span class="block text-xs text-indigo-300">PUAN</span>
+                <span id="scoreDisplay" class="text-2xl font-bold text-yellow-400">0</span>
+            </div>
+            <div class="h-8 w-px bg-white/20"></div>
+            <div class="text-center">
+                <span class="block text-xs text-indigo-300">AÇILAN KUTU</span>
+                <span id="boxesOpenedDisplay" class="text-2xl font-bold text-teal-400">0/12</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="w-full max-w-5xl flex-1 flex flex-col items-center justify-center">
+        
+        <!-- Welcome Screen / Start Modal -->
+        <div id="startScreen" class="w-full max-w-xl bg-white/15 backdrop-blur-xl border border-white/20 rounded-3xl p-8 text-center shadow-2xl">
+            <div class="w-24 h-24 bg-gradient-to-tr from-yellow-400 to-amber-500 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl text-purple-950 shadow-xl animate-bounce">
+                <i class="fa-solid fa-gift"></i>
+            </div>
+            <h2 class="text-3xl font-bold mb-3">Sürpriz Çokgen Kutularına Hoş Geldin!</h2>
+            <p class="text-indigo-100 mb-6 text-sm md:text-base leading-relaxed">
+                5. sınıf çokgenler konusundaki bilgilerini test etmeye hazır mısın? Kutuları aç, soruları hızlıca cevapla ve ne kadar hızlı olursan o kadar çok bonus puan kazan!
+            </p>
+            <div class="grid grid-cols-2 gap-4 mb-8 text-left bg-black/20 p-4 rounded-2xl border border-white/10 text-xs md:text-sm">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-bolt text-yellow-400"></i>
+                    <span>Hızlı cevap = Ekstra Puan</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-star text-teal-400"></i>
+                    <span>12 Heyecanlı Kutu</span>
+                </div>
+            </div>
+            <button onclick="startGame()" class="w-full py-4 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-slate-950 font-bold text-xl rounded-2xl shadow-xl transition transform active:scale-95">
+                OYUNA BAŞLA <i class="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+
+        <!-- Game Board (Hidden initially) -->
+        <div id="gameBoard" class="w-full hidden flex flex-col items-center">
+            <div class="grid grid-cols-3 sm:grid-cols-4 gap-4 md:gap-6 w-full max-w-4xl" id="boxesGrid">
+                <!-- Dynamically generated boxes will go here -->
+            </div>
+        </div>
+
+        <!-- Question Modal (Hidden initially) -->
+        <div id="questionModal" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+            <div class="bg-slate-900 border border-indigo-500/30 w-full max-w-lg rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+                
+                <!-- Timer Bar Header -->
+                <div class="flex justify-between items-center mb-6">
+                    <span id="boxNumberBadge" class="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-semibold">Kutu #1</span>
+                    <div class="flex items-center gap-2 bg-slate-800 px-4 py-1.5 rounded-full border border-slate-700">
+                        <i class="fa-solid fa-stopwatch text-yellow-400 animate-pulse"></i>
+                        <span id="timerText" class="font-mono font-bold text-yellow-400 text-lg">15s</span>
+                    </div>
+                </div>
+
+                <!-- Timer Progress Line -->
+                <div class="w-full bg-slate-800 h-2 rounded-full mb-6 overflow-hidden">
+                    <div id="timerBar" class="bg-gradient-to-r from-emerald-400 to-yellow-400 h-full w-full transition-all duration-1000 linear"></div>
+                </div>
+
+                <!-- Question Visual / Text -->
+                <div class="mb-6">
+                    <div id="questionVisual" class="bg-indigo-950/60 border border-indigo-500/20 rounded-2xl p-4 flex items-center justify-center min-h-[120px] mb-4 text-indigo-200 text-center">
+                        <!-- Dynamic SVG or Shape description -->
+                    </div>
+                    <h3 id="questionText" class="text-lg md:text-xl font-semibold text-center text-white mb-2">
+                        Soru burada görünecek...
+                    </h3>
+                </div>
+
+                <!-- Options Grid -->
+                <div id="optionsContainer" class="grid grid-cols-1 gap-3">
+                    <!-- Dynamic Options -->
+                </div>
+
+                <!-- Feedback Message -->
+                <div id="feedbackBox" class="mt-4 hidden p-3 rounded-xl text-center font-bold text-sm"></div>
+            </div>
+        </div>
+
+        <!-- Game Over Modal -->
+        <div id="gameOverModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+            <div class="bg-slate-900 border border-indigo-500/30 w-full max-w-md rounded-3xl p-8 text-center shadow-2xl">
+                <div class="w-20 h-20 bg-yellow-400 text-purple-950 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-xl">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <h2 class="text-3xl font-bold mb-2">Tebrikler Avcı!</h2>
+                <p class="text-slate-400 mb-6 text-sm">Bütün kutuları başarıyla açtın ve çokgen lordu oldun.</p>
+                <div class="bg-slate-800 p-4 rounded-2xl mb-6 border border-slate-700">
+                    <span class="block text-xs text-slate-400">TOPLAM PUANIN</span>
+                    <span id="finalScore" class="text-4xl font-extrabold text-yellow-400">0</span>
+                </div>
+                <button onclick="resetGame()" class="w-full py-3.5 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg transition">
+                    TEKRAR OYNA <i class="fa-solid fa-rotate-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="w-full max-w-5xl text-center text-xs text-indigo-200 mt-6 bg-white/5 py-3 rounded-xl backdrop-blur-sm border border-white/10">
+        <p><i class="fa-solid fa-lightbulb text-yellow-400 mr-1"></i> İpucu: Çokgenlerin kenar sayılarına ve köşegen özelliklerine dikkat et!</p>
+    </footer>
+
+    <script>
+        // Question Bank for 5th Grade Polygons
+        const questionsData = [
+            {
+                question: "Aşağıdakilerden hangisi bir çokgendir?",
+                visual: `<svg width="80" height="80" viewBox="0 0 100 100"><polygon points="50,10 90,90 10,90" fill="none" stroke="#34d399" stroke-width="6"/></svg>`,
+                options: [
+                    "Çember",
+                    "Üçgen",
+                    "İçi boş daire",
+                    "Yay"
+                ],
+                correct: 1
+            },
+            {
+                question: "Bir üçgenin iç açılarının toplamı kaç derecedir?",
+                visual: `<svg width="90" height="80" viewBox="0 0 100 100"><polygon points="50,15 90,85 10,85" fill="#4f46e5" fill-opacity="0.3" stroke="#818cf8" stroke-width="5"/><text x="45" y="60" fill="white" font-size="18">?</text></svg>`,
+                options: ["90°", "180°", "360°", "540°"],
+                correct: 1
+            },
+            {
+                question: "Aşağıdaki çokgenlerden hangisinin kenar sayısı en fazladır?",
+                visual: `<svg width="80" height="80" viewBox="0 0 100 100"><polygon points="30,10 70,10 90,50 70,90 30,90 10,50" fill="none" stroke="#f472b6" stroke-width="6"/></svg>`,
+                options: ["Üçgen", "Dörtgen", "Beşgen", "Altıgen"],
+                correct: 3
+            },
+            {
+                question: "Bir dörtgenin köşegen sayısı kaçtır?",
+                visual: `<svg width="80" height="80" viewBox="0 0 100 100"><rect x="15" y="15" width="70" height="70" fill="none" stroke="#fbbf24" stroke-width="5"/><line x1="15" y1="15" x2="85" y2="85" stroke="#fbbf24" stroke-dasharray="4" stroke-width="3"/></svg>`,
+                options: ["1", "2", "4", "6"],
+                correct: 1
+            },
+            {
+                question: "Kenar sayısı ile köşe sayısı birbirine eşit olan geometrik şekil aşağıdakilerden hangisidir?",
+                visual: `<svg width="80" height="80" viewBox="0 0 100 100"><polygon points="50,10 90,40 75,90 25,90 10,40" fill="none" stroke="#38bdf8" stroke-width="6"/></svg>`,
+                options: ["Çokgenler", "Nokta", "Işın", "Doğru parçası"],
+                correct: 0
+            },
+            {
+                question: "Aşağıdakilerden hangisi bir 'Beşgen' örneğidir?",
+                visual: `<svg width="80" height="80" viewBox="0 0 100 100"><polygon points="50,10 90,40 75,90 25,90 10,40" fill="#38bdf8" fill-opacity="0.2" stroke="#38bdf8" stroke-width="5"/></svg>`,
+                options: [
+                    "5 kenarı ve 5 köşesi olan şekil",
+                    "4 kenarı olan şekil",
+                    "Hiç köşesi olmayan şekil",
+                    "3 kenarlı şekil"
+                ],
+                correct: 0
+            },
+            {
+                question: "Hangi çokgenin köşegeni yoktur?",
+                visual: `<svg width="80" height="80" viewBox="0 0 100 100"><polygon points="50,10 90,90 10,90" fill="none" stroke="#f87171" stroke-width="6"/></svg>`,
+                options: ["Üçgen", "Dörtgen", "Beşgen", "Altıgen"],
+                correct: 0
+            },
+            {
+                question: "Bir altıgenin kaç tane köşesi vardır?",
+                visual: `<svg width="80" height="80" viewBox="0 0 100 100"><polygon points="30,10 70,10 95,50 70,90 30,90 5,50" fill="none" stroke="#a78bfa" stroke-width="6"/></svg>`,
+                options: ["4", "5", "6", "8"],
+                correct: 2
+            },
+            {
+                question: "Aşağıdakilerden hangisi çokgen **değildir**?",
+                visual: `<svg width="80" height="80" viewBox="0 0 100 100"><path d="M10,50 Q50,10 90,50 T90,90" fill="none" stroke="#fb7185" stroke-width="6"/></svg>`,
+                options: ["Üçgen", "Daire", "Dikdörtgen", "Kare"],
+                correct: 1
+            },
+            {
+                question: "Karenin tüm iç açılarının ölçüleri toplamı kaç derecedir?",
+                visual: `<svg width="80" height="80" viewBox="0 0 100 100"><rect x="20" y="20" width="60" height="60" fill="none" stroke="#34d399" stroke-width="5"/><path d="M20,35 L35,35 L35,20" fill="none" stroke="#34d399" stroke-width="3"/></svg>`,
+                options: ["180°", "270°", "360°", "720°"],
+                correct: 2
+            },
+            {
+                question: "Sekizgenin kaç kenarı vardır?",
+                visual: `<svg width="80" height="80" viewBox="0 0 100 100"><polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="none" stroke="#facc15" stroke-width="5"/></svg>`,
+                options: ["6", "7", "8", "10"],
+                correct: 2
+            },
+            {
+                question: "Aşağıdakilerden hangisi düzgün çokgendir?",
+                visual: `<svg width="80" height="80" viewBox="0 0 100 100"><polygon points="50,10 90,90 10,90" fill="#f43f5e" fill-opacity="0.2" stroke="#f43f5e" stroke-width="5"/></svg>`,
+                options: [
+                    "Tüm kenar uzunlukları ve açıları eşit olan çokgen",
+                    "Sadece kenarları farklı olan çokgen",
+                    "Köşegeni olmayan şekil",
+                    "Eğri çizgilerden oluşan şekil"
+                ],
+                correct: 0
+            }
+        ];
+
+        let score = 0;
+        let boxesOpened = 0;
+        let currentQuestionIndex = 0;
+        let activeBoxElement = null;
+        let timerInterval = null;
+        let timeLeft = 15;
+        let openedBoxesSet = new Set();
+
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameBoard').classList.remove('hidden');
+            renderBoxes();
+        }
+
+        function renderBoxes() {
+            const grid = document.getElementById('boxesGrid');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < 12; i++) {
+                const isOpened = openedBoxesSet.has(i);
+                const boxDiv = document.createElement('div');
+                boxDiv.className = `box-perspective h-32 cursor-pointer select-none`;
+                boxDiv.innerHTML = `
+                    <div class="box-inner w-full h-full relative rounded-2xl shadow-xl ${isOpened ? 'box-open opacity-60 pointer-events-none' : ''}" id="box-${i}">
+                        <!-- Front Face -->
+                        <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-700 border border-white/30 rounded-2xl flex flex-col items-center justify-center p-4 text-white hover:scale-105 transition transform shadow-lg">
+                            <i class="fa-solid fa-gift text-3xl text-yellow-300 mb-1 animate-bounce"></i>
+                            <span class="font-bold text-lg">Kutu #${i + 1}</span>
+                            <span class="text-[10px] text-indigo-200 uppercase tracking-widest">${isOpened ? 'Açıldı' : 'Tıkla Aç'}</span>
+                        </div>
+                        <!-- Back Face -->
+                        <div class="absolute inset-0 bg-slate-800 border border-teal-500/50 rounded-2xl flex items-center justify-center text-teal-400 font-bold text-xl rotate-y-180">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                    </div>
+                `;
+                
+                if (!isOpened) {
+                    boxDiv.addEventListener('click', () => openBox(i, boxDiv));
+                }
+                grid.appendChild(boxDiv);
+            }
+        }
+
+        function openBox(index, element) {
+            activeBoxElement = element;
+            currentQuestionIndex = index;
+
+            // Visual Box Opening Effect (Box flip + shake)
+            const inner = element.querySelector('.box-inner');
+            inner.classList.add('box-open');
+            
+            // Trigger Confetti Pop on box click
+            confetti({
+                particleCount: 40,
+                spread: 60,
+                origin: { y: 0.7 }
+            });
+
+            setTimeout(() => {
+                showQuestionModal(index);
+            }, 500);
+        }
+
+        function showQuestionModal(index) {
+            const modal = document.getElementById('questionModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            const q = questionsData[index];
+            document.getElementById('boxNumberBadge').innerText = `Sürpriz Kutu #${index + 1}`;
+            document.getElementById('questionText').innerText = q.question;
+            document.getElementById('questionVisual').innerHTML = q.visual;
+
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+
+            q.options.forEach((opt, optIndex) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full py-3.5 px-4 bg-slate-800 hover:bg-indigo-600/40 border border-indigo-500/30 hover:border-indigo-400 rounded-xl font-medium text-left transition transform active:scale-98 flex items-center justify-between text-sm md:text-base";
+                btn.innerHTML = `<span><strong class="text-indigo-400 mr-2">${String.fromCharCode(65 + optIndex)}.</strong> ${opt}</span> <i class="fa-solid fa-chevron-right text-xs opacity-40"></i>`;
+                btn.onclick = () => checkAnswer(optIndex, q.correct);
+                optionsContainer.appendChild(btn);
+            });
+
+            // Reset and start timer
+            timeLeft = 15;
+            document.getElementById('timerText').innerText = `${timeLeft}s`;
+            const timerBar = document.getElementById('timerBar');
+            timerBar.style.width = '100%';
+            timerBar.className = "bg-gradient-to-r from-emerald-400 to-yellow-400 h-full transition-all duration-1000 linear";
+
+            document.getElementById('feedbackBox').classList.add('hidden');
+
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timerText').innerText = `${timeLeft}s`;
+                const percent = (timeLeft / 15) * 100;
+                timerBar.style.width = `${percent}%`;
+
+                if (timeLeft <= 5) {
+                    timerBar.className = "bg-gradient-to-r from-orange-500 to-red-500 h-full transition-all duration-1000 linear";
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeOut(q.correct);
+                }
+            }, 1000);
+        }
+
+        function checkAnswer(selected, correct) {
+            clearInterval(timerInterval);
+            const feedbackBox = document.getElementById('feedbackBox');
+            feedbackBox.classList.remove('hidden');
+
+            const buttons = document.getElementById('optionsContainer').querySelectorAll('button');
+            buttons.forEach(b => b.disabled = true);
+
+            if (selected === correct) {
+                // Speed bonus points calculation
+                const speedBonus = timeLeft * 10;
+                const earnedPoints = 100 + speedBonus;
+                score += earnedPoints;
+
+                feedbackBox.className = "mt-4 p-3 rounded-xl text-center font-bold text-sm bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+                feedbackBox.innerHTML = `<i class="fa-solid fa-circle-check mr-2"></i> Harika! Doğru Cevap. (+${earnedPoints} Puan - Hız Bonusu: ${speedBonus}) <br><span class="text-xs font-normal">Kutu başarıyla açıldı!</span>`;
+
+                confetti({
+                    particleCount: 100,
+                    spread: 80,
+                    origin: { y: 0.6 }
+                });
+
+                openedBoxesSet.add(currentQuestionIndex);
+                boxesOpened++;
+                document.getElementById('scoreDisplay').innerText = score;
+                document.getElementById('boxesOpenedDisplay').innerText = `${boxesOpened}/12`;
+
+                setTimeout(() => {
+                    closeModalAndProceed();
+                }, 2200);
+
+            } else {
+                feedbackBox.className = "mt-4 p-3 rounded-xl text-center font-bold text-sm bg-rose-500/20 text-rose-300 border border-rose-500/30";
+                feedbackBox.innerHTML = `<i class="fa-solid fa-circle-xmark mr-2"></i> Yanlış Cevap! Doğru şık ${String.fromCharCode(65 + correct)} olmalıydı.`;
+
+                // Shake effect on modal
+                document.querySelector('#questionModal > div').classList.add('shake');
+                setTimeout(() => {
+                    document.querySelector('#questionModal > div').classList.remove('shake');
+                }, 500);
+
+                openedBoxesSet.add(currentQuestionIndex);
+                boxesOpened++;
+                document.getElementById('boxesOpenedDisplay').innerText = `${boxesOpened}/12`;
+
+                setTimeout(() => {
+                    closeModalAndProceed();
+                }, 2500);
+            }
+        }
+
+        function handleTimeOut(correct) {
+            const feedbackBox = document.getElementById('feedbackBox');
+            feedbackBox.classList.remove('hidden');
+            feedbackBox.className = "mt-4 p-3 rounded-xl text-center font-bold text-sm bg-amber-500/20 text-amber-300 border border-amber-500/30";
+            feedbackBox.innerHTML = `<i class="fa-solid fa-clock mr-2"></i> Süre Bitti! Doğru şık ${String.fromCharCode(65 + correct)} idi.`;
+
+            const buttons = document.getElementById('optionsContainer').querySelectorAll('button');
+            buttons.forEach(b => b.disabled = true);
+
+            openedBoxesSet.add(currentQuestionIndex);
+            boxesOpened++;
+            document.getElementById('boxesOpenedDisplay').innerText = `${boxesOpened}/12`;
+
+            setTimeout(() => {
+                closeModalAndProceed();
+            }, 2500);
+        }
+
+        function closeModalAndProceed() {
+            const modal = document.getElementById('questionModal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+
+            renderBoxes();
+
+            if (boxesOpened >= 12) {
+                setTimeout(showGameOver, 500);
+            }
+        }
+
+        function showGameOver() {
+            document.getElementById('gameOverModal').classList.remove('hidden');
+            document.getElementById('gameOverModal').classList.add('flex');
+            document.getElementById('finalScore').innerText = score;
+
+            confetti({
+                particleCount: 200,
+                spread: 120,
+                origin: { y: 0.5 }
+            });
+        }
+
+        function resetGame() {
+            score = 0;
+            boxesOpened = 0;
+            openedBoxesSet.clear();
+            document.getElementById('scoreDisplay').innerText = '0';
+            document.getElementById('boxesOpenedDisplay').innerText = '0/12';
+            document.getElementById('gameOverModal').classList.remove('flex');
+            document.getElementById('gameOverModal').classList.add('hidden');
+            renderBoxes();
+        }
+    </script>
+</body>
+</html>
